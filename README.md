@@ -1,1 +1,48 @@
-# ytt: Lightning-Fast YouTube Transcript CLI Tool\n\n[![GitHub repo size](https://img.shields.io/github/repo-size/IFAKA/yt-transcription?style=flat-square)](https://github.com/IFAKA/yt-transcription)\n\n**ytt** is a high-performance CLI utility for fetching and copying YouTube transcripts directly to your clipboard. Designed for speed and efficiency, it streamlines the process of extracting text from YouTube videos for researchers, developers, and content creators.\n\n## 🚀 Features\n\n- **Fast Transcript Fetching:** Optimized for speed, retrieving transcripts in seconds.\n- **Direct-to-Clipboard:** Automatically copies fetched transcripts to your system clipboard.\n- **CLI-First Workflow:** Simple commands for terminal-based automation.\n- **Lightweight Architecture:** Built with Go and Python for minimal footprint and maximum performance.\n\n## 🛠 Installation\n\nClone the repository and install dependencies:\n\n```bash\ngit clone https://github.com/IFAKA/yt-transcription.git\ncd yt-transcription\n# Follow specific language installation (Go/Python)\n```\n\n## 📖 Usage\n\nPass a YouTube URL to `ytt` to fetch and copy the transcript:\n\n```bash\nytt https://www.youtube.com/watch?v=VIDEO_ID\n```\n\n## 🎯 Keywords\n\nYouTube transcript downloader, CLI tool, Go, Python, transcript automation, developer tools, YouTube API, text extraction.\n\n## 📄 License\n\n[MIT](LICENSE)
+# ytt: Lightning-Fast YouTube Transcript CLI Tool
+
+[![GitHub repo size](https://img.shields.io/github/repo-size/IFAKA/yt-transcription?style=flat-square)](https://github.com/IFAKA/yt-transcription)
+
+**ytt** is a high-performance CLI utility for fetching and copying YouTube transcripts directly to your clipboard. Designed for speed and efficiency, it streamlines the process of extracting text from YouTube videos for researchers, developers, and content creators.
+
+## 🚀 Features
+
+- **Fast Transcript Fetching:** Optimized for speed, retrieving transcripts in seconds.
+- **Direct-to-Clipboard:** Automatically copies fetched transcripts to your system clipboard.
+- **Smart AI Integration:** After copying, easily open your favorite AI interface (Gemini, Claude, or ChatGPT) via an interactive CLI menu.
+- **Interactive Navigation:** Use `j`/`k` or arrow keys to navigate the menu, `Enter` to select, and `Esc` to skip.
+- **CLI-First Workflow:** Simple commands for terminal-based automation.
+- **Lightweight & Fast:** Written in Go for maximum performance.
+
+## 🛠 Installation
+
+Clone the repository and install the binary:
+
+```bash
+git clone https://github.com/IFAKA/yt-transcription.git
+cd yt-transcription
+go install ytt.go
+```
+
+## 📖 Usage
+
+Pass a YouTube URL to `ytt` to fetch and copy the transcript:
+
+```bash
+ytt https://www.youtube.com/watch?v=VIDEO_ID
+```
+
+After the transcript is copied, an interactive menu will appear:
+```
+Select an AI site to open (j/k to navigate, Enter to select, Esc to close):
+> Gemini
+  Claude
+  ChatGPT
+```
+
+## 🎯 Keywords
+
+YouTube transcript downloader, CLI tool, Go, Python, transcript automation, developer tools, YouTube API, text extraction, Gemini, Claude, ChatGPT.
+
+## 📄 License
+
+[MIT](LICENSE)

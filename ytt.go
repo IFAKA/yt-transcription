@@ -12,6 +12,8 @@ import (
 	"strings"
 	"time"
 	"unicode"
+
+	"golang.org/x/term"
 )
 
 const innertubeAPIKey = "AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8"
@@ -265,4 +267,75 @@ func main() {
 	}
 	fmt.Printf("Copied ~%s words (~%s tokens) to clipboard.\n",
 		formatNumber(words), formatNumber(tokens))
+
+	showAISitesMenu()
+}
+
+func showAISitesMenu() {
+	sites := []struct {
+		name string
+		url  string
+	}{
+		{"Gemini", "https://gemini.google.com/"},
+		{"Claude", "https://claude.ai/"},
+		{"ChatGPT", "https://chatgpt.com/"},
+	}
+
+	selected := 0
+
+	// Set terminal to raw mode
+	oldState, err := term.MakeRaw(int(os.Stdin.Fd()))
+	if err != nil {
+		return
+	}
+	defer term.Restore(int(os.Stdin.Fd()), oldState)
+
+	for {
+		// Clear screen and show menu
+		fmt.Print("\033[H\033[2J")
+		fmt.Print("\rSelect an AI site to open (j/k to navigate, Enter to select, Esc to close):\n\r")
+		for i, site := range sites {
+			prefix := "  "
+			if i == selected {
+				prefix = "> "
+			}
+			fmt.Printf("\r%s%s\n", prefix, site.name)
+		}
+
+		// Read key press
+		var b [3]byte
+		n, err := os.Stdin.Read(b[:])
+		if err != nil {
+			break
+		}
+
+		if n == 1 {
+			if b[0] == 27 { // Esc
+				break
+			}
+			if b[0] == '\r' || b[0] == '\n' { // Enter
+				openURL(sites[selected].url)
+				break
+			}
+			if b[0] == 'j' {
+				selected = (selected + 1) % len(sites)
+			}
+			if b[0] == 'k' {
+				selected = (selected - 1 + len(sites)) % len(sites)
+			}
+		} else if n == 3 && b[0] == 27 && b[1] == '[' { // Arrow keys
+			if b[2] == 'B' { // Down
+				selected = (selected + 1) % len(sites)
+			} else if b[2] == 'A' { // Up
+				selected = (selected - 1 + len(sites)) % len(sites)
+			}
+		}
+	}
+	fmt.Print("\033[H\033[2J\r")
+}
+
+func openURL(url string) {
+	var cmd *exec.Cmd
+	cmd = exec.Command("open", url)
+	cmd.Run()
 }
