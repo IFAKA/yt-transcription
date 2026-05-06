@@ -15,12 +15,33 @@
 
 ## 🛠 Installation
 
-Clone the repository and install the binary:
+Install `ytt` with curl:
 
 ```bash
-git clone https://github.com/IFAKA/yt-transcription.git
-cd yt-transcription
-go install ytt.go
+curl -fsSL https://raw.githubusercontent.com/IFAKA/yt-transcription/main/install.sh | sh
+```
+
+The installer builds the Go CLI and installs it as `/usr/local/bin/ytt`.
+Make sure `/usr/local/bin` is in your `PATH`.
+
+To install somewhere else:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/IFAKA/yt-transcription/main/install.sh | BIN_DIR="$HOME/.local/bin" sh
+```
+
+## 🧹 Uninstall
+
+Uninstall `ytt` with curl:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/IFAKA/yt-transcription/main/uninstall.sh | sh
+```
+
+If you installed to a custom directory, pass the same `BIN_DIR`:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/IFAKA/yt-transcription/main/uninstall.sh | BIN_DIR="$HOME/.local/bin" sh
 ```
 
 ## 📖 Usage
