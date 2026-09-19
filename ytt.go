@@ -4,16 +4,16 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"os/exec"
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 	"unicode"
-
-	"golang.org/x/term"
 )
 
 const innertubeAPIKey = "AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8"
@@ -57,8 +57,8 @@ var (
 		regexp.MustCompile(`/shorts/([A-Za-z0-9_-]{11})`),
 		regexp.MustCompile(`/embed/([A-Za-z0-9_-]{11})`),
 	}
-	rawIDRe   = regexp.MustCompile(`^[A-Za-z0-9_-]{11}$`)
-	noiseRe   = regexp.MustCompile(`\[[^\]]*\]`)
+	rawIDRe    = regexp.MustCompile(`^[A-Za-z0-9_-]{11}$`)
+	noiseRe    = regexp.MustCompile(`\[[^\]]*\]`)
 	fmtParamRe = regexp.MustCompile(`([?&])fmt=[^&]*`)
 	httpClient = &http.Client{Timeout: 15 * time.Second}
 )
@@ -168,6 +168,65 @@ func fetchTranscript(baseURL string) (string, time.Duration, error) {
 	return sb.String(), elapsed, nil
 }
 
+type statusReporter struct {
+	mu      sync.Mutex
+	writer  io.Writer
+	message string
+	stop    chan struct{}
+	done    chan struct{}
+}
+
+func newStatusReporter(writer io.Writer) *statusReporter {
+	return &statusReporter{writer: writer}
+}
+
+func (s *statusReporter) Start(message string) {
+	s.message = message
+	s.stop = make(chan struct{})
+	s.done = make(chan struct{})
+	go s.animate()
+}
+
+func (s *statusReporter) Update(message string) {
+	s.mu.Lock()
+	s.message = message
+	s.mu.Unlock()
+}
+
+func (s *statusReporter) animate() {
+	defer close(s.done)
+	spinner := []string{"|", "/", "-", "\\"}
+	ticker := time.NewTicker(100 * time.Millisecond)
+	defer ticker.Stop()
+	position := 0
+	for {
+		select {
+		case <-ticker.C:
+			s.mu.Lock()
+			message := s.message
+			s.mu.Unlock()
+			fmt.Fprintf(s.writer, "\r\033[2K%s %s", spinner[position], message)
+			position = (position + 1) % len(spinner)
+		case <-s.stop:
+			return
+		}
+	}
+}
+
+func (s *statusReporter) finish(symbol, message string) {
+	close(s.stop)
+	<-s.done
+	fmt.Fprintf(s.writer, "\r\033[2K%s %s\n", symbol, message)
+}
+
+func (s *statusReporter) Success(message string) {
+	s.finish("✓", message)
+}
+
+func (s *statusReporter) Failure(err error) {
+	s.finish("✗", err.Error())
+}
+
 func main() {
 	args := os.Args[1:]
 	if len(args) == 0 {
@@ -176,6 +235,7 @@ func main() {
 	}
 
 	lang := "en"
+	langExplicit := false
 	profile := false
 	var input string
 
@@ -188,6 +248,7 @@ func main() {
 			}
 			i++
 			lang = args[i]
+			langExplicit = true
 		case "--profile":
 			profile = true
 		default:
@@ -204,31 +265,35 @@ func main() {
 		os.Exit(1)
 	}
 
+	status := newStatusReporter(os.Stderr)
+	status.Start("Validating URL")
 	videoID, err := extractVideoID(input)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
+		status.Failure(err)
 		os.Exit(1)
 	}
 
 	totalStart := time.Now()
 
+	status.Update("Fetching transcript")
 	pr, playerElapsed, err := fetchPlayerAPI(videoID)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "player API:", err)
+		status.Failure(fmt.Errorf("player API: %w", err))
 		os.Exit(1)
 	}
 	if pr.Captions == nil {
-		fmt.Fprintln(os.Stderr, "no captions for this video")
+		status.Failure(fmt.Errorf("no captions for this video"))
 		os.Exit(1)
 	}
 
 	tracks := pr.Captions.PlayerCaptionsTracklistRenderer.CaptionTracks
 	if len(tracks) == 0 {
-		fmt.Fprintln(os.Stderr, "transcripts disabled for this video")
+		status.Failure(fmt.Errorf("transcripts disabled for this video"))
 		os.Exit(1)
 	}
 
 	var trackURL string
+	selectedLang := lang
 	for _, t := range tracks {
 		if t.LanguageCode == lang {
 			trackURL = t.BaseURL
@@ -236,106 +301,46 @@ func main() {
 		}
 	}
 	if trackURL == "" {
-		fmt.Fprintf(os.Stderr, "no transcript for language %q — available:\n", lang)
-		for _, t := range tracks {
-			fmt.Fprintf(os.Stderr, "  %s  (%s)\n", t.LanguageCode, t.Name.SimpleText)
+		if !langExplicit {
+			trackURL = tracks[0].BaseURL
+			selectedLang = tracks[0].LanguageCode
 		}
+	}
+	if trackURL == "" {
+		available := make([]string, 0, len(tracks))
+		for _, t := range tracks {
+			available = append(available, fmt.Sprintf("%s (%s)", t.LanguageCode, t.Name.SimpleText))
+		}
+		status.Failure(fmt.Errorf("no transcript for language %q — available: %s", lang, strings.Join(available, ", ")))
 		os.Exit(1)
+	}
+	if !langExplicit && selectedLang != lang {
+		status.Update(fmt.Sprintf("Fetching transcript (using %q)", selectedLang))
 	}
 
 	rawText, transcriptElapsed, err := fetchTranscript(trackURL)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "transcript fetch:", err)
+		status.Failure(fmt.Errorf("transcript fetch: %w", err))
 		os.Exit(1)
 	}
 
-	totalElapsed := time.Since(totalStart)
 	text := cleanTranscript(rawText)
 	words := len(strings.Fields(text))
 	tokens := int(float64(words) * 1.333)
 
+	status.Update("Copying transcript")
 	cmd := exec.Command("pbcopy")
 	cmd.Stdin = strings.NewReader(text)
 	if err := cmd.Run(); err != nil {
-		fmt.Fprintln(os.Stderr, "clipboard:", err)
+		status.Failure(fmt.Errorf("clipboard: %w", err))
+		os.Exit(1)
 	}
+	totalElapsed := time.Since(totalStart)
+	status.Success(fmt.Sprintf("Copied ~%s words (~%s tokens) to clipboard", formatNumber(words), formatNumber(tokens)))
 
 	if profile {
 		fmt.Printf("  player API:       %.2fs\n", playerElapsed.Seconds())
 		fmt.Printf("  transcript fetch: %.2fs\n", transcriptElapsed.Seconds())
 		fmt.Printf("  total wall time:  %.2fs\n", totalElapsed.Seconds())
 	}
-	fmt.Printf("Copied ~%s words (~%s tokens) to clipboard.\n",
-		formatNumber(words), formatNumber(tokens))
-
-	showAISitesMenu()
-}
-
-func showAISitesMenu() {
-	sites := []struct {
-		name string
-		url  string
-	}{
-		{"Gemini", "https://gemini.google.com/"},
-		{"Claude", "https://claude.ai/"},
-		{"ChatGPT", "https://chatgpt.com/"},
-	}
-
-	selected := 0
-
-	// Set terminal to raw mode
-	oldState, err := term.MakeRaw(int(os.Stdin.Fd()))
-	if err != nil {
-		return
-	}
-	defer term.Restore(int(os.Stdin.Fd()), oldState)
-
-	for {
-		// Clear screen and show menu
-		fmt.Print("\033[H\033[2J")
-		fmt.Print("\rSelect an AI site to open (j/k to navigate, Enter to select, Esc to close):\n\r")
-		for i, site := range sites {
-			prefix := "  "
-			if i == selected {
-				prefix = "> "
-			}
-			fmt.Printf("\r%s%s\n", prefix, site.name)
-		}
-
-		// Read key press
-		var b [3]byte
-		n, err := os.Stdin.Read(b[:])
-		if err != nil {
-			break
-		}
-
-		if n == 1 {
-			if b[0] == 27 { // Esc
-				break
-			}
-			if b[0] == '\r' || b[0] == '\n' { // Enter
-				openURL(sites[selected].url)
-				break
-			}
-			if b[0] == 'j' {
-				selected = (selected + 1) % len(sites)
-			}
-			if b[0] == 'k' {
-				selected = (selected - 1 + len(sites)) % len(sites)
-			}
-		} else if n == 3 && b[0] == 27 && b[1] == '[' { // Arrow keys
-			if b[2] == 'B' { // Down
-				selected = (selected + 1) % len(sites)
-			} else if b[2] == 'A' { // Up
-				selected = (selected - 1 + len(sites)) % len(sites)
-			}
-		}
-	}
-	fmt.Print("\033[H\033[2J\r")
-}
-
-func openURL(url string) {
-	var cmd *exec.Cmd
-	cmd = exec.Command("open", url)
-	cmd.Run()
 }

@@ -8,9 +8,8 @@
 
 - **Fast Transcript Fetching:** Optimized for speed, retrieving transcripts in seconds.
 - **Direct-to-Clipboard:** Automatically copies fetched transcripts to your system clipboard.
-- **Smart AI Integration:** After copying, easily open your favorite AI interface (Gemini, Claude, or ChatGPT) via an interactive CLI menu.
-- **Interactive Navigation:** Use `j`/`k` or arrow keys to navigate the menu, `Enter` to select, and `Esc` to skip.
-- **CLI-First Workflow:** Simple commands for terminal-based automation.
+- **Automatic Workflow:** Validates the input, fetches the transcript, copies it, and exits after reporting success or failure.
+- **Live Status Feedback:** Shows compact progress states and final word/token counts in the terminal.
 - **Lightweight & Fast:** Written in Go for maximum performance.
 
 ## 🛠 Installation
@@ -52,17 +51,24 @@ Pass a YouTube URL to `ytt` to fetch and copy the transcript:
 ytt https://www.youtube.com/watch?v=VIDEO_ID
 ```
 
-After the transcript is copied, an interactive menu will appear:
+`ytt` accepts full YouTube URLs, short URLs, Shorts URLs, embed URLs, and raw 11-character video IDs. It prefers English transcripts by default and automatically uses the first transcript language YouTube provides when English is unavailable. Use `--lang LANG` to require a specific language:
+
+```bash
+ytt https://www.youtube.com/watch?v=VIDEO_ID --lang es
 ```
-Select an AI site to open (j/k to navigate, Enter to select, Esc to close):
-> Gemini
-  Claude
-  ChatGPT
+
+The terminal reports the state-based flow as it runs:
+
+```text
+| Validating URL
+/ Fetching transcript
+- Copying transcript
+✓ Copied ~1,234 words (~1,644 tokens) to clipboard
 ```
 
 ## 🎯 Keywords
 
-YouTube transcript downloader, CLI tool, Go, Python, transcript automation, developer tools, YouTube API, text extraction, Gemini, Claude, ChatGPT.
+YouTube transcript downloader, CLI tool, Go, Python, transcript automation, developer tools, YouTube API, text extraction.
 
 ## 📄 License
 
