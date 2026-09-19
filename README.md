@@ -57,6 +57,12 @@ ytt https://www.youtube.com/watch?v=VIDEO_ID
 ytt https://www.youtube.com/watch?v=VIDEO_ID --lang es
 ```
 
+Add `--profile` to print the elapsed time for each pipeline step, including URL validation, transcript selection, cleanup, and clipboard copy:
+
+```bash
+ytt https://www.youtube.com/watch?v=VIDEO_ID --profile
+```
+
 The terminal reports the state-based flow as it runs:
 
 ```text

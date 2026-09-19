@@ -265,18 +265,21 @@ func main() {
 		os.Exit(1)
 	}
 
+	totalStart := time.Now()
 	status := newStatusReporter(os.Stderr)
 	status.Start("Validating URL")
+	validationStart := time.Now()
 	videoID, err := extractVideoID(input)
+	validationElapsed := time.Since(validationStart)
 	if err != nil {
 		status.Failure(err)
 		os.Exit(1)
 	}
 
-	totalStart := time.Now()
-
 	status.Update("Fetching transcript")
+	playerStart := time.Now()
 	pr, playerElapsed, err := fetchPlayerAPI(videoID)
+	playerStepElapsed := time.Since(playerStart)
 	if err != nil {
 		status.Failure(fmt.Errorf("player API: %w", err))
 		os.Exit(1)
@@ -292,6 +295,7 @@ func main() {
 		os.Exit(1)
 	}
 
+	selectionStart := time.Now()
 	var trackURL string
 	selectedLang := lang
 	for _, t := range tracks {
@@ -317,30 +321,43 @@ func main() {
 	if !langExplicit && selectedLang != lang {
 		status.Update(fmt.Sprintf("Fetching transcript (using %q)", selectedLang))
 	}
+	selectionElapsed := time.Since(selectionStart)
 
+	transcriptStart := time.Now()
 	rawText, transcriptElapsed, err := fetchTranscript(trackURL)
+	transcriptStepElapsed := time.Since(transcriptStart)
 	if err != nil {
 		status.Failure(fmt.Errorf("transcript fetch: %w", err))
 		os.Exit(1)
 	}
 
+	processingStart := time.Now()
 	text := cleanTranscript(rawText)
 	words := len(strings.Fields(text))
 	tokens := int(float64(words) * 1.333)
+	processingElapsed := time.Since(processingStart)
 
 	status.Update("Copying transcript")
+	copyStart := time.Now()
 	cmd := exec.Command("pbcopy")
 	cmd.Stdin = strings.NewReader(text)
 	if err := cmd.Run(); err != nil {
 		status.Failure(fmt.Errorf("clipboard: %w", err))
 		os.Exit(1)
 	}
+	copyElapsed := time.Since(copyStart)
 	totalElapsed := time.Since(totalStart)
 	status.Success(fmt.Sprintf("Copied ~%s words (~%s tokens) to clipboard", formatNumber(words), formatNumber(tokens)))
 
 	if profile {
-		fmt.Printf("  player API:       %.2fs\n", playerElapsed.Seconds())
-		fmt.Printf("  transcript fetch: %.2fs\n", transcriptElapsed.Seconds())
+		fmt.Printf("  validation:        %.2fs\n", validationElapsed.Seconds())
+		fmt.Printf("  player step:       %.2fs\n", playerStepElapsed.Seconds())
+		fmt.Printf("  player API:        %.2fs\n", playerElapsed.Seconds())
+		fmt.Printf("  transcript select: %.2fs\n", selectionElapsed.Seconds())
+		fmt.Printf("  transcript step:   %.2fs\n", transcriptStepElapsed.Seconds())
+		fmt.Printf("  transcript fetch:  %.2fs\n", transcriptElapsed.Seconds())
+		fmt.Printf("  clean/count:       %.2fs\n", processingElapsed.Seconds())
+		fmt.Printf("  clipboard copy:    %.2fs\n", copyElapsed.Seconds())
 		fmt.Printf("  total wall time:  %.2fs\n", totalElapsed.Seconds())
 	}
 }
