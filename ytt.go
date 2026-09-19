@@ -87,6 +87,19 @@ func formatNumber(n int) string {
 	return string(out)
 }
 
+func formatDuration(d time.Duration) string {
+	switch {
+	case d < time.Microsecond:
+		return fmt.Sprintf("%dns", d.Nanoseconds())
+	case d < time.Millisecond:
+		return fmt.Sprintf("%.2fµs", float64(d)/float64(time.Microsecond))
+	case d < time.Second:
+		return fmt.Sprintf("%.2fms", float64(d)/float64(time.Millisecond))
+	default:
+		return fmt.Sprintf("%.2fs", d.Seconds())
+	}
+}
+
 func cleanTranscript(raw string) string {
 	cleaned := noiseRe.ReplaceAllString(raw, "")
 	var sb strings.Builder
@@ -348,13 +361,13 @@ func main() {
 	totalElapsed := time.Since(totalStart)
 	status.Success(fmt.Sprintf("Copied ~%s words (~%s tokens) to clipboard", formatNumber(words), formatNumber(tokens)))
 
-	fmt.Printf("  validation:        %.2fs\n", validationElapsed.Seconds())
-	fmt.Printf("  player step:       %.2fs\n", playerStepElapsed.Seconds())
-	fmt.Printf("  player API:        %.2fs\n", playerElapsed.Seconds())
-	fmt.Printf("  transcript select: %.2fs\n", selectionElapsed.Seconds())
-	fmt.Printf("  transcript step:   %.2fs\n", transcriptStepElapsed.Seconds())
-	fmt.Printf("  transcript fetch:  %.2fs\n", transcriptElapsed.Seconds())
-	fmt.Printf("  clean/count:       %.2fs\n", processingElapsed.Seconds())
-	fmt.Printf("  clipboard copy:    %.2fs\n", copyElapsed.Seconds())
-	fmt.Printf("  total wall time:  %.2fs\n", totalElapsed.Seconds())
+	fmt.Printf("  validation:        %s\n", formatDuration(validationElapsed))
+	fmt.Printf("  player step:       %s\n", formatDuration(playerStepElapsed))
+	fmt.Printf("  player API:        %s\n", formatDuration(playerElapsed))
+	fmt.Printf("  transcript select: %s\n", formatDuration(selectionElapsed))
+	fmt.Printf("  transcript step:   %s\n", formatDuration(transcriptStepElapsed))
+	fmt.Printf("  transcript fetch:  %s\n", formatDuration(transcriptElapsed))
+	fmt.Printf("  clean/count:       %s\n", formatDuration(processingElapsed))
+	fmt.Printf("  clipboard copy:    %s\n", formatDuration(copyElapsed))
+	fmt.Printf("  total wall time:  %s\n", formatDuration(totalElapsed))
 }

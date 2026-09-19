@@ -3,6 +3,7 @@ package main
 import (
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestExtractVideoID(t *testing.T) {
@@ -38,5 +39,26 @@ func TestExtractVideoIDRejectsInvalidInput(t *testing.T) {
 	}
 	if want := "could not extract video ID"; !strings.Contains(err.Error(), want) {
 		t.Fatalf("error = %q, want it to contain %q", err, want)
+	}
+}
+
+func TestFormatDuration(t *testing.T) {
+	tests := []struct {
+		name  string
+		input time.Duration
+		want  string
+	}{
+		{name: "nanoseconds", input: 250 * time.Nanosecond, want: "250ns"},
+		{name: "microseconds", input: 125 * time.Microsecond, want: "125.00µs"},
+		{name: "milliseconds", input: 125 * time.Millisecond, want: "125.00ms"},
+		{name: "seconds", input: 1250 * time.Millisecond, want: "1.25s"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := formatDuration(tt.input); got != tt.want {
+				t.Fatalf("formatDuration(%s) = %q, want %q", tt.input, got, tt.want)
+			}
+		})
 	}
 }
