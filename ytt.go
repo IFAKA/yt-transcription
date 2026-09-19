@@ -236,7 +236,6 @@ func main() {
 
 	lang := "en"
 	langExplicit := false
-	profile := false
 	var input string
 
 	for i := 0; i < len(args); i++ {
@@ -250,7 +249,7 @@ func main() {
 			lang = args[i]
 			langExplicit = true
 		case "--profile":
-			profile = true
+			// Retained for compatibility; timing output is now always enabled.
 		default:
 			if input != "" {
 				fmt.Fprintln(os.Stderr, "unexpected argument:", args[i])
@@ -349,15 +348,13 @@ func main() {
 	totalElapsed := time.Since(totalStart)
 	status.Success(fmt.Sprintf("Copied ~%s words (~%s tokens) to clipboard", formatNumber(words), formatNumber(tokens)))
 
-	if profile {
-		fmt.Printf("  validation:        %.2fs\n", validationElapsed.Seconds())
-		fmt.Printf("  player step:       %.2fs\n", playerStepElapsed.Seconds())
-		fmt.Printf("  player API:        %.2fs\n", playerElapsed.Seconds())
-		fmt.Printf("  transcript select: %.2fs\n", selectionElapsed.Seconds())
-		fmt.Printf("  transcript step:   %.2fs\n", transcriptStepElapsed.Seconds())
-		fmt.Printf("  transcript fetch:  %.2fs\n", transcriptElapsed.Seconds())
-		fmt.Printf("  clean/count:       %.2fs\n", processingElapsed.Seconds())
-		fmt.Printf("  clipboard copy:    %.2fs\n", copyElapsed.Seconds())
-		fmt.Printf("  total wall time:  %.2fs\n", totalElapsed.Seconds())
-	}
+	fmt.Printf("  validation:        %.2fs\n", validationElapsed.Seconds())
+	fmt.Printf("  player step:       %.2fs\n", playerStepElapsed.Seconds())
+	fmt.Printf("  player API:        %.2fs\n", playerElapsed.Seconds())
+	fmt.Printf("  transcript select: %.2fs\n", selectionElapsed.Seconds())
+	fmt.Printf("  transcript step:   %.2fs\n", transcriptStepElapsed.Seconds())
+	fmt.Printf("  transcript fetch:  %.2fs\n", transcriptElapsed.Seconds())
+	fmt.Printf("  clean/count:       %.2fs\n", processingElapsed.Seconds())
+	fmt.Printf("  clipboard copy:    %.2fs\n", copyElapsed.Seconds())
+	fmt.Printf("  total wall time:  %.2fs\n", totalElapsed.Seconds())
 }
